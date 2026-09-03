@@ -30,9 +30,10 @@ RST      = "\033[0m"
 DAY_NAMES = {1: "Po", 2: "Út", 3: "St", 4: "Čt", 5: "Pá", 6: "So", 7: "Ne"}
 
 
-def render_cell(text, width, fg=""):
+def render_cell(text, width, fg="", bg=""):
     t = str(text)[:width].center(width)
-    return " " + (fg + t + RST if fg else t) + " "
+    color = bg + fg
+    return " " + (color + t + RST if color else t) + " "
 
 
 def hline(lft, mid, rgt, fill, nh):
@@ -77,6 +78,29 @@ def get_fg(atom, line_idx):
     return ["\033[1;97m", "\033[94m", "\033[92m"][line_idx]
 
 
+def get_bg(atom, day_date, hour):
+    if atom is None:
+        return ""
+
+    change = atom.get("Change")
+    if change and change.get("ChangeType") == "Removed":
+        return "\033[42m"
+
+    now = datetime.now()
+    if day_date == now.date():
+        try:
+            begin = datetime.strptime(hour.get("BeginTime", ""), "%H:%M").time()
+            end = datetime.strptime(hour.get("EndTime", ""), "%H:%M").time()
+        except ValueError:
+            begin = end = None
+        if begin is not None and begin <= now.time() < end:
+            return "\033[41m"
+
+    if change:
+        return "\033[43m"
+    return ""
+
+
 def make_row(day_text, day_fg, cell_parts):
     S = "│"
     return S + render_cell(day_text, DAY_COL, day_fg) + S + S.join(cell_parts) + S
@@ -118,14 +142,16 @@ def print_timetable(data):
     for di, day in enumerate(days):
         day_name = DAY_NAMES.get(day["DayOfWeek"], "?")
         date_str = datetime.fromisoformat(day["Date"]).strftime("%d.%m.")
+        day_date = datetime.fromisoformat(day["Date"]).date()
 
         atoms     = [grid[di].get(hid) for hid in hour_ids]
         atom_data = [get_atom_data(a, subjects_lk, teachers_lk, rooms_lk) for a in atoms]
 
         rows = [[], [], []]
-        for atom, lines in zip(atoms, atom_data):
+        for atom, hour_id, lines in zip(atoms, hour_ids, atom_data):
+            bg = get_bg(atom, day_date, hours_lk.get(hour_id, {}))
             for li in range(3):
-                rows[li].append(render_cell(lines[li], CELL, get_fg(atom, li)))
+                rows[li].append(render_cell(lines[li], CELL, get_fg(atom, li), bg))
 
         print(hline("├", "┼", "┤", "─", nh))
         print(make_row(day_name, "\033[1;97m", rows[0]))
