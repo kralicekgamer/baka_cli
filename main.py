@@ -1,22 +1,23 @@
 import requests
+import json
+import argparse
+import sys
+import getpass
+import keyring
 from datetime import datetime
 
-BASE     = "https://marvdf.bakalari.cz:444"
-USERNAME = "Adame46931"
-PASSWORD = "8BrVXdMs"
-
-def get_token(username, password):
-    url     = f"{BASE}/api/login"
+def get_token(username, password, base):
+    url = f"{base.rstrip('/')}/api/login"
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
     payload = f"client_id=ANDR&grant_type=password&username={username}&password={password}"
     return requests.post(url, data=payload, headers=headers).json()['access_token']
 
-def get_timetable(token):
+def get_timetable(token, base):
     headers = {"Authorization": f"Bearer {token}"}
-    return requests.get(f"{BASE}/api/3/timetable/actual", headers=headers).json()
-
-
-TOKEN = get_token(USERNAME, PASSWORD)
+    return requests.get(
+        f"{base.rstrip('/')}/api/3/timetable/actual",
+        headers=headers,
+    ).json()
 
 
 def build_lookup(items, key="Id"):
@@ -34,7 +35,6 @@ def render_cell(text, width, fg="", bg=""):
     t = str(text)[:width].center(width)
     color = bg + fg
     return " " + (color + t + RST if color else t) + " "
-
 
 def hline(lft, mid, rgt, fill, nh):
     return lft + fill * (DAY_COL + 2) + mid + mid.join([fill * (CELL + 2)] * nh) + rgt
@@ -162,4 +162,32 @@ def print_timetable(data):
     print()
 
 
-print_timetable(get_timetable(TOKEN))
+
+def login():
+    try:
+        base = keyring.get_password("baka-cli", "base")
+        username = keyring.get_password("baka-cli", "username")
+        password = keyring.get_password("baka-cli", "password")
+    except Exception:
+        base = None
+        username = None
+        password = None
+
+    if not base or not username or not password:
+        username = input("Zadej zde svoje uživatelské jméno: ")
+        password = getpass.getpass("Zadej zde svoje heslo: ")
+        base = input(
+            "Zadej zde svojí URL (https://marvdf.bakalari.cz:444): "
+        ).strip() or "https://marvdf.bakalari.cz:444"
+        token = get_token(username, password, base)
+        keyring.set_password("baka-cli", "base", base)
+        keyring.set_password("baka-cli", "username", username)
+        keyring.set_password("baka-cli", "password", password)
+        return token, base
+
+    return get_token(username, password, base), base
+
+
+token, base = login()
+
+print_timetable(get_timetable(token, base))
