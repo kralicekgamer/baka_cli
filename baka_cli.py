@@ -40,18 +40,26 @@ def hline(lft, mid, rgt, fill, nh):
     return lft + fill * (DAY_COL + 2) + mid + mid.join([fill * (CELL + 2)] * nh) + rgt
 
 
+def get_change_type(atom):
+    change = atom.get("Change") if atom else None
+    return str(change.get("ChangeType", "")).strip().lower() if change else ""
+
+
 def get_atom_data(atom, subjects_lk, teachers_lk, rooms_lk):
     if atom is None:
         return ("", "", "")
 
     change = atom.get("Change")
     if change:
-        ct = change.get("ChangeType", "")
+        ct = get_change_type(atom)
 
-        if ct == "Removed":
-            return ("─" * (CELL - 2), "", "")
+        if ct in {"removed", "cancelled", "canceled"}:
+            return ("CAN", "", "")
 
-        if ct == "Absence":
+        if ct == "moved":
+            return ("MOV", "", "")
+
+        if ct == "absence":
             abbrev = change.get("TypeAbbrev") or "ABN"
             return (abbrev, "", "")
 
@@ -72,8 +80,7 @@ def get_atom_data(atom, subjects_lk, teachers_lk, rooms_lk):
 def get_fg(atom, line_idx):
     if atom is None:
         return ""
-    change = atom.get("Change")
-    if change and change.get("ChangeType") == "Absence":
+    if get_change_type(atom) == "absence":
         return "\033[1;33m" if line_idx == 0 else ""
     return ["\033[1;97m", "\033[94m", "\033[92m"][line_idx]
 
@@ -83,7 +90,7 @@ def get_bg(atom, day_date, hour):
         return ""
 
     change = atom.get("Change")
-    if change and change.get("ChangeType") == "Removed":
+    if get_change_type(atom) in {"removed", "cancelled", "canceled", "moved"}:
         return "\033[42m"
 
     now = datetime.now()
