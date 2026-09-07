@@ -30,6 +30,11 @@ RST      = "\033[0m"
 
 DAY_NAMES = {1: "Po", 2: "Út", 3: "St", 4: "Čt", 5: "Pá", 6: "So", 7: "Ne"}
 
+# Dark true-color backgrounds keep the status visible without overpowering the text.
+BG_DISCARDED = "\033[48;2;8;58;42m"
+BG_ACTIVE    = "\033[48;2;170;28;36m"
+BG_CHANGED   = "\033[48;2;92;58;8m"
+
 
 def render_cell(text, width, fg="", bg=""):
     t = str(text)[:width].center(width)
@@ -91,7 +96,7 @@ def get_bg(atom, day_date, hour):
 
     change = atom.get("Change")
     if get_change_type(atom) in {"removed", "cancelled", "canceled", "moved"}:
-        return "\033[42m"
+        return BG_DISCARDED
 
     now = datetime.now()
     if day_date == now.date():
@@ -101,10 +106,10 @@ def get_bg(atom, day_date, hour):
         except ValueError:
             begin = end = None
         if begin is not None and begin <= now.time() < end:
-            return "\033[41m"
+            return BG_ACTIVE
 
     if change:
-        return "\033[43m"
+        return BG_CHANGED
     return ""
 
 
