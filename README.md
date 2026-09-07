@@ -1,6 +1,8 @@
 # BakaCLI
 Jednoduchý program pro příkazovou řádku, který umožňuje zobrazení rozvrhu z bakaláří přímo v terminálu.
 
+![Showcase](image.png)
+
 ## Instalace
 ```bash
 curl -s https://raw.githubusercontent.com/kralicekgamer/baka_cli/refs/heads/main/install.sh | bash
